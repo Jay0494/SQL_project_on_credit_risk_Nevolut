@@ -1,6 +1,6 @@
 # SQL Analysis – UK Credit Risk Case Study
 ---
-
+[SQL files and Images](https://drive.google.com/drive/folders/1PAmnpUVuuqLOAD44jip1QN2hv7wDfRby?usp=drive_link)
 # Credit Risk Case Study
 
 ## UK Retail Portfolio – Nevolut Bank
