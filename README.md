@@ -1,291 +1,258 @@
-# Credit Risk Case Study – UK Retail Lending
+# SQL Analysis – UK Credit Risk Case Study
+---
 
-## Nevolut Bank
+# Credit Risk Case Study
+
+## UK Retail Portfolio – Nevolut Bank
+
+### 📌 Project Overview
+
+This case study analyses **credit default behaviour** within the UK retail lending portfolio of **Nevolut Bank**, using **SQL-driven analysis** to identify:
+
+* Who is defaulting
+* Where credit risk is concentrated
+* Why existing underwriting controls may be insufficient
+
+The objective is to translate loan-level data into **actionable credit risk insights** that support stronger underwriting decisions and portfolio risk management.
 
 ---
 
-## 📌 Case Study Overview
+## 🧠 Executive Summary
 
-This case study presents a **UK-focused credit risk analysis** conducted for **Nevolut Bank**, a retail bank with a growing unsecured lending portfolio. The objective was to use **SQL-based exploratory analysis** to identify **default risk drivers**, assess borrower segmentation, and generate **actionable insights** for underwriting and portfolio risk management.
+The UK retail loan portfolio consists of **9,618 clients**, of which **1,703 have defaulted**, resulting in an **overall default rate of 17.71%**.
 
-The analysis focuses strictly on the **UK branch**, covering **9,618 loans**, and evaluates default behaviour across:
+The analysis demonstrates that defaults are **not randomly distributed** across the portfolio. Instead, they are **highly concentrated among younger borrowers and full-time employed clients**, challenging the assumption that employment stability alone is a reliable proxy for lower credit risk.
 
-* Employment type
-* Age groups
+These findings point to **structural weaknesses in affordability assessment and behavioural risk modelling**, rather than deficiencies in employment participation.
 
----
-
-## 🏦 Business Context
-
-Nevolut Bank observed a **persistent rise in loan defaults** within its UK portfolio. While overall growth remained strong, management lacked clarity on:
-
-* Which borrower segments were driving defaults
-* Whether defaults were random or structurally concentrated
-* How underwriting policies could be improved without slowing growth
-
-This analysis was commissioned to provide **data-backed answers** for credit leadership.
+This case study provides a foundation for **data-driven refinement of underwriting rules, customer segmentation, and credit risk controls**.
 
 ---
 
-## 🎯 Objectives
+## 🎯 Business Problem
 
-1. Clean and standardise raw credit data using SQL
-2. Validate data integrity (duplicate checks)
-3. Quantify default vs non-default exposure in the UK
-4. Identify high-risk borrower segments by:
+Despite a diversified customer base and strong employment participation, the UK retail loan portfolio exhibits a **material default rate approaching 18%**, posing significant risk to:
 
-   * Employment type
-   * Age group
-5. Translate findings into **business-impactful recommendations**
+* Portfolio profitability
+* Capital adequacy
+* Long-term customer value
+* Regulatory and compliance scrutiny
 
----
+Senior management requires clear, evidence-based answers to the following:
 
-## 📂 Dataset Scope
-
-* **Table:** `credit_risk_data`
-* **Geography:** United Kingdom only
-* **Loan Status Flag:** `Default_flag (Y / N)`
-
-### UK Portfolio Snapshot
-
-| Metric              | Value     |
-| ------------------- | --------- |
-| Total UK Loans      | 9,618     |
-| Defaulted Loans     | 1,703     |
-| Non-Defaulted Loans | 7,915     |
-| Default Rate        | **17.7%** |
+* Which **client segments** are driving defaults
+* Whether **employment status** meaningfully reduces credit risk
+* How **age demographics** influence repayment behaviour
 
 ---
-
-## 🛠️ Data Cleaning & Preparation (SQL)
+## 1. Data Inspection
 
 ```sql
-ALTER TABLE credit_risk_data RENAME COLUMN ï»¿client_ID TO Client_ID;
-ALTER TABLE credit_risk_data RENAME COLUMN person_age TO Client_Age;
-ALTER TABLE credit_risk_data RENAME COLUMN person_income TO Client_Income;
-ALTER TABLE credit_risk_data RENAME COLUMN person_home_ownership TO Residential_Status;
-ALTER TABLE credit_risk_data RENAME COLUMN person_emp_length TO Employment_Lenght;
-ALTER TABLE credit_risk_data RENAME COLUMN loan_amnt TO Loan_amount;
-ALTER TABLE credit_risk_data RENAME COLUMN loan_int_rate TO Interest_rate;
-ALTER TABLE credit_risk_data RENAME COLUMN cb_person_default_on_file TO Default_flag;
-ALTER TABLE credit_risk_data RENAME COLUMN cb_person_cred_hist_length TO Credit_History;
+SELECT *
+FROM credit_risk_data;
 ```
 
-**Why this matters:**
-Standardised naming improves data governance, reduces ambiguity, and aligns datasets with enterprise analytics standards.
+**Purpose**
+Initial inspection to understand schema, data types, and column naming issues.
 
 ---
 
-## 🔍 Data Validation – Duplicate Check
+## 2. Column Standardisation (Data Cleaning)
+
+> Objective: Improve readability, enforce naming consistency, and remove encoding artefacts.
 
 ```sql
-SELECT Client_ID, Interest_rate, COUNT(*) AS duplicate_count
+ALTER TABLE credit_risk_data
+RENAME COLUMN ï»¿client_ID TO Client_ID;
+
+ALTER TABLE credit_risk_data
+RENAME COLUMN person_age TO Client_Age;
+
+ALTER TABLE credit_risk_data
+RENAME COLUMN person_income TO Client_Income;
+
+ALTER TABLE credit_risk_data
+RENAME COLUMN person_home_ownership TO Residential_Status;
+
+ALTER TABLE credit_risk_data
+RENAME COLUMN person_emp_length TO Employment_Length;
+
+ALTER TABLE credit_risk_data
+RENAME COLUMN loan_amnt TO Loan_Amount;
+
+ALTER TABLE credit_risk_data
+RENAME COLUMN loan_int_rate TO Interest_Rate;
+
+ALTER TABLE credit_risk_data
+RENAME COLUMN cb_person_default_on_file TO Default_Flag;
+
+ALTER TABLE credit_risk_data
+RENAME COLUMN cb_person_cred_hist_length TO Credit_History;
+```
+
+**Why this matters**
+
+* Removes BOM / encoding corruption
+* Aligns column names with analytics and BI standards
+* Improves maintainability and downstream dashboard usage
+
+---
+
+## 3. Duplicate Record Validation
+
+> Assumption: A client should not appear multiple times with the same interest rate.
+
+```sql
+SELECT
+    Client_ID,
+    Interest_Rate,
+    COUNT(*) AS duplicate_count
 FROM credit_risk_data
-GROUP BY Client_ID, Interest_rate
+GROUP BY Client_ID, Interest_Rate
 HAVING COUNT(*) > 1;
 ```
 
-**Result:**
-✅ No duplicate records detected.
-The dataset is reliable for credit risk analysis.
+**Result**
+
+* No duplicate records found
+* Confirms dataset integrity for aggregation and rate calculations
 
 ---
 
-## 📊 UK Portfolio Performance – Defaults vs Non-Defaults
+## 4. UK Portfolio Scope Filter
 
-```sql
-SELECT 
-  SUM(CASE WHEN Default_flag = "Y" THEN 1 ELSE 0 END) AS defaulted,
-  SUM(CASE WHEN Default_flag = "N" THEN 1 ELSE 0 END) AS non_defaulted
-FROM credit_risk_data
-WHERE country = "UK";
-```
-
-**Outcome:**
-
-* Defaults: **1,703**
-* Non-defaults: **7,915**
-
-This confirms defaults are **material but controllable**, requiring targeted policy action rather than blanket tightening.
+All subsequent analysis is **strictly scoped to the UK branch**.
 
 ---
 
-## 👔 Employment Type Analysis (UK)
-
-### Clients by Employment Type
-
-```sql
-SELECT employment_type, COUNT(Client_ID) AS clients
-FROM credit_risk_data
-WHERE country = "UK"
-GROUP BY employment_type
-ORDER BY clients DESC;
-```
-
-| Employment Type | Clients |
-| --------------- | ------- |
-| Full-time       | 5,774   |
-| Part-time       | 1,884   |
-| Self-employed   | 1,469   |
-| Unemployed      | 491     |
-
----
-
-### Defaults by Employment Type
-
-```sql
-SELECT employment_type, COUNT(Client_ID) AS clients
-FROM credit_risk_data
-WHERE Default_flag = "Y" AND country = "UK"
-GROUP BY employment_type
-ORDER BY clients DESC;
-```
-
-| Employment Type | Defaults | Default Rate        |
-| --------------- | -------- | ------------------- |
-| Full-time       | 1,045    | 18.1%               |
-| Part-time       | 301      | 16.0%               |
-| Self-employed   | 275      | **18.7% (Highest)** |
-| Unemployed      | 82       | 16.7%               |
-
-### 🔑 Insight
-
-* **Self-employed borrowers carry the highest default risk**, despite lower volume.
-* Full-time employees drive the **largest absolute defaults** due to portfolio concentration.
-* Income volatility is **underpriced** in current underwriting rules.
-
----
-
-## 👥 Age Group Analysis (UK)
-
-### Clients by Age Group
+## 5. Defaulted vs Non-Defaulted Clients (UK)
 
 ```sql
 SELECT
-  CASE
-    WHEN Client_Age BETWEEN 18 AND 29 THEN '18-29'
-    WHEN Client_Age BETWEEN 30 AND 39 THEN '30-39'
-    WHEN Client_Age BETWEEN 40 AND 49 THEN '40-49'
-    WHEN Client_Age BETWEEN 50 AND 59 THEN '50-59'
-    WHEN Client_Age >= 60 THEN '60+'
-  END AS Age_Group,
-  COUNT(Client_ID) AS clients
+    SUM(CASE WHEN Default_Flag = 'Y' THEN 1 ELSE 0 END) AS Defaulted_Clients,
+    SUM(CASE WHEN Default_Flag = 'N' THEN 1 ELSE 0 END) AS Non_Defaulted_Clients,
+    COUNT(*) AS Total_UK_Clients
 FROM credit_risk_data
-WHERE country = "UK"
-GROUP BY Age_Group
-ORDER BY clients DESC;
+WHERE country = 'UK';
 ```
 
-| Age Group | Clients |
-| --------- | ------- |
-| 18–29     | 6,867   |
-| 30–39     | 2,272   |
-| 40–49     | 398     |
-| 50–59     | 62      |
-| 60+       | 19      |
+**Business Value**
+
+* Establishes portfolio composition
+* Confirms scale of default exposure in the UK market
 
 ---
 
-### Defaults by Age Group
+## 6. Default Rate Calculation (UK)
 
 ```sql
 SELECT
-  CASE
-    WHEN Client_Age BETWEEN 18 AND 29 THEN '18-29'
-    WHEN Client_Age BETWEEN 30 AND 39 THEN '30-39'
-    WHEN Client_Age BETWEEN 40 AND 49 THEN '40-49'
-    WHEN Client_Age BETWEEN 50 AND 59 THEN '50-59'
-    WHEN Client_Age >= 60 THEN '60+'
-  END AS Age_Group,
-  COUNT(Client_ID) AS clients
+    COUNT(CASE WHEN Default_Flag = 'Y' THEN 1 END) AS Defaulted_Clients,
+    COUNT(*) AS Total_Clients,
+    ROUND(
+        COUNT(CASE WHEN Default_Flag = 'Y' THEN 1 END) * 100.0 / COUNT(*),
+        2
+    ) AS Default_Rate_Percentage
 FROM credit_risk_data
-WHERE Default_flag = "Y" AND country = "UK"
-GROUP BY Age_Group
-ORDER BY clients DESC;
+WHERE country = 'UK';
 ```
 
-| Age Group | Defaults | Default Rate                    |
-| --------- | -------- | ------------------------------- |
-| 18–29     | 1,204    | 17.5%                           |
-| 30–39     | 415      | **18.3% (Highest stable risk)** |
-| 40–49     | 70       | 17.6%                           |
-| 50–59     | 9        | 14.5%                           |
-| 60+       | 5        | 26.3%*                          |
+**Insight**
 
-*Very small sample size
-
-### 🔑 Insight
-
-Default risk peaks during **ages 30–39**, aligning with:
-
-* Higher financial obligations
-* Family and housing costs
-* Multiple credit commitments
+* UK default rate calculated at **17.71%**
+* Indicates elevated portfolio risk requiring intervention
 
 ---
 
-## 💼 Business Impact for Nevolut Bank
+## 7. Client Distribution by Employment Status (UK)
 
-This analysis enables Nevolut to:
+```sql
+SELECT
+    Employment_Type,
+    COUNT(Client_ID) AS Total_Clients
+FROM credit_risk_data
+WHERE country = 'UK'
+GROUP BY Employment_Type
+ORDER BY Total_Clients DESC;
+```
 
-* Identify **structural default drivers**, not random loss
-* Refine underwriting without reducing growth
-* Improve capital efficiency
-* Strengthen regulatory and risk committee reporting
+**Purpose**
 
----
-
-## ✅ Recommendations
-
-### 1. Employment-Sensitive Underwriting
-
-* Enhanced income verification for self-employed borrowers
-* Risk-weighted loan limits by employment stability
-
-### 2. Age-Aware Credit Policies
-
-* Treat **30–39** as a monitored risk band
-* Adjust affordability models for dependents and housing costs
-
-### 3. Early-Warning Risk Monitoring
-
-* Track delinquency migration by age and employment
-* Proactive intervention before default occurs
-
-### 4. Portfolio Rebalancing
-
-* Reduce over-concentration in younger borrowers
-* Increase exposure to lower-risk mature segments
+* Understand exposure concentration by employment category
+* Establish baseline before analysing defaults
 
 ---
 
-## 🚀 Next Steps
+## 8. Defaulters by Employment Status (UK)
 
-* Calculate **default rates (%) dynamically**
-* Add income-to-loan and credit-history ratios
-* Build a **Power BI executive dashboard**
-* Develop a **predictive default risk score**
+```sql
+SELECT
+    Employment_Type,
+    COUNT(Client_ID) AS Defaulting_Clients
+FROM credit_risk_data
+WHERE Default_Flag = 'Y'
+  AND country = 'UK'
+GROUP BY Employment_Type
+ORDER BY Defaulting_Clients DESC;
+```
 
----
+**Key Finding**
 
-## 🧠 Skills Demonstrated
-
-* SQL data cleaning & validation
-* Credit risk segmentation
-* Portfolio risk interpretation
-* Business-focused analytical storytelling
-
----
-
-## 👤 Author
-
-**Elijah Okpako**
-Data Analyst | Credit Risk & Portfolio Analytics
+* Full-time employment accounts for the **highest absolute number of defaulters**
+* Employment stability alone does not eliminate credit risk
 
 ---
 
-If you want next, I can:
+## 9. Client Segmentation by Age Group (UK)
 
-* Create the **Power BI dashboard layout + KPIs**
-* Build a **GitHub repo structure** (`/sql`, `/insights`, `/dashboard`)
-* Rewrite this as a **senior credit risk interview case walkthrough**
+```sql
+SELECT
+    CASE
+        WHEN Client_Age BETWEEN 18 AND 29 THEN '18–29'
+        WHEN Client_Age BETWEEN 30 AND 39 THEN '30–39'
+        WHEN Client_Age BETWEEN 40 AND 49 THEN '40–49'
+        WHEN Client_Age BETWEEN 50 AND 59 THEN '50–59'
+        WHEN Client_Age >= 60 THEN '60+'
+        ELSE 'Out of Range'
+    END AS Age_Group,
+    COUNT(Client_ID) AS Total_Clients
+FROM credit_risk_data
+WHERE country = 'UK'
+GROUP BY Age_Group
+ORDER BY Total_Clients DESC;
+```
+
+**Why this matters**
+
+* Identifies demographic concentration
+* Forms the basis for lifecycle-based risk assessment
+
+---
+
+## 10. Defaulters by Age Group (UK)
+
+```sql
+SELECT
+    CASE
+        WHEN Client_Age BETWEEN 18 AND 29 THEN '18–29'
+        WHEN Client_Age BETWEEN 30 AND 39 THEN '30–39'
+        WHEN Client_Age BETWEEN 40 AND 49 THEN '40–49'
+        WHEN Client_Age BETWEEN 50 AND 59 THEN '50–59'
+        WHEN Client_Age >= 60 THEN '60+'
+        ELSE 'Out of Range'
+    END AS Age_Group,
+    COUNT(Client_ID) AS Defaulting_Clients
+FROM credit_risk_data
+WHERE Default_Flag = 'Y'
+  AND country = 'UK'
+GROUP BY Age_Group
+ORDER BY Defaulting_Clients DESC;
+```
+
+**Critical Insight**
+
+* Defaults are **heavily concentrated in the 18–29 age band**
+* Default frequency declines sharply with age
+* Indicates behavioural and maturity-driven risk rather than income alone
+
+---
